@@ -21,6 +21,21 @@ CUPS. Rendering is identical across models; only the print-head dimensions diffe
 | Tape widths (laminated TZe) | 6, 9, 12, 18, 24 mm | 3.5, 6, 9, 12, 18, 24, 36 mm |
 | Typical connection | Wi-Fi | wired Ethernet |
 
+## Before you print (read this screen, then print)
+
+1. **What is it for?** Name the object's form factor and pass it: `--for mini-pc` (known kinds:
+   cable, peripheral, power-brick, phone, tablet, mini-pc, tower, nas, rack, other). The CLI caps
+   the tape width for that kind and refuses wider tape. A label that *fits* can still be far too
+   big: a 27 mm bold name on 24 mm tape fit a NUC lid and was wrong. Know the clear area and pass
+   `--fit LxH` (mm) when you do. An agent cannot print without `--for`.
+2. **Several labels are ONE job.** `--label A --label B`, or `--image a.png --image b.png`.
+   That is the only way to get half-cuts between them. **`--chain` is not it:** it leaves NO cut
+   and refuses unless you add `--no-cut-ok`.
+3. **Say only what the `Cuts:` line says.** Every job prints one (`Cuts: half-cut between the 3
+   labels, full cut at the end`). Quote it to the user. Never describe a cut you did not see there.
+4. **Probe, size, preview, print.** The probe says what tape is loaded, not what the object needs.
+   If the loaded tape is wider than the form factor allows, ask for a narrower cassette.
+
 ## Install and configure (once per Mac)
 
 ```bash
@@ -81,8 +96,9 @@ The resolved printer host is cached per model under `~/.cache/ptouch-label/` so 
    user said to print directly. Tape is expensive.
 4. **Batch, and half-cut between labels.** N separate jobs cost N leader feeds (about 23 mm of
    blank tape each, cut off as waste). One job with `--copies N`, or one job with several
-   `--label` arguments, pays the leader once and leaves a strip with half-cuts between labels,
-   which peel apart by hand and stay in order.
+   `--label` or several `--image` arguments, pays the leader once and leaves a strip with
+   half-cuts between labels, which peel apart by hand and stay in order. The job's `Cuts:` line
+   states the result; report that, not what you intended.
 5. **Hi-res is the default.** Every call prints at 360 dpi horizontal over the raster protocol.
    AirPrint at 180 dpi (`--no-high-resolution`) is visibly fuzzier on tape; use it only for a
    large batch where the roughly 2x speed matters.
@@ -100,6 +116,8 @@ ptouch-label --length 80 "Longer label"           # fixed length in mm
 ptouch-label --font-size 32 "Custom"
 ptouch-label --copies 12 --bold "PWR ONLY"        # twelve identical labels, one feed, half-cuts between
 ptouch-label --label "NAS" "DS1821+" --label "Scanner" "iX500"   # different labels, one job, half-cuts between
+ptouch-label --image a.png --image b.png          # the same, from pre-rendered images (previews)
+ptouch-label --for mini-pc --fit 60x15 "quirrell" # cap the tape width by object kind; refuse if it does not fit
 ptouch-label --mirror "Reverse me"                # for transparent or iron-on tape
 ptouch-label --dry-run "Debug"                    # show the command, print nothing
 ```
@@ -112,6 +130,10 @@ ptouch-label --dry-run "Debug"                    # show the command, print noth
 | `--no-probe` | | off | Skip the probe. Requires `--tape N`; only for a printer that is genuinely offline and whose cassette the user has read by eye. |
 | `--probe` | | off | Probe and exit. |
 | `--label` | | | Repeatable: one physical label per `--label`, its arguments are the lines. Several `--label`s print as one job with half-cuts between. Mutually exclusive with positional lines. |
+| `--image` | | | Repeatable: a pre-rendered image per `--image`, scaled to the tape, white trimmed (`--no-trim` keeps it). Several print as one job with half-cuts between. |
+| `--for` | | | The object's form factor (cable, peripheral, power-brick, phone, tablet, mini-pc, tower, nas, rack, other). Caps the tape width by label kind; wider tape is refused. Required for a real print when an agent runs the tool. Override the table under `[form_factors]` in the config. |
+| `--kind` | | inferred | `name` (one line, read at a glance) or `stats` (several lines). Inferred: one line of text is a name; more lines or an image is stats. |
+| `--fit` | | | `LxH` in mm, the clear area. Refuses a label longer than L or tape wider than H. |
 | `--length` | `-l` | auto | Label length in mm. |
 | `--font-size` | `-s` | auto | Font size in px (auto targets 70 % of the printable height per line). |
 | `--bold` | `-b` | off | Bold font. |
@@ -120,7 +142,7 @@ ptouch-label --dry-run "Debug"                    # show the command, print noth
 | `--dry-run` | `-n` | off | Show the command only. |
 | `--copies` | `-c` | 1 | Identical copies in one feed (1 to 99), half-cuts between. |
 | `--half-cut` | | off | Half-cut between pages. Implied by `--copies` and `--label`. |
-| `--chain` | | off | Suppress the final feed and cut so the next job continues without a leader. See below before using. |
+| `--chain` | | off | Leave the tape uncut after the job: NO cut between it and the next job (scissors). Refuses without `--no-cut-ok`. Not how labels are joined; see below. |
 | `--mirror` | | off | Mirrored print, for transparent or iron-on tape. |
 | `--special-tape` | | off | No-cut mode for non-laminated decorative tape (untested on real special tape). |
 | `--high-resolution` / `--no-high-resolution` | | on | 360 dpi raster over port 9100, or 180 dpi AirPrint. |
@@ -146,13 +168,31 @@ means feeding that much tape past it. That one fact explains the rest:
 - **24.5 mm is the minimum label length** (Raster Command Reference v1.02, page 18). Shorter
   content is padded, and the padding lands inconsistently at the front or back of each copy.
 - **`--chain` produces no cut at all** between jobs: it suppresses the end-of-job feed and cut,
-  so consecutive chained jobs butt together and need scissors. Every job in a chain except the
-  last must pass `--chain` (each invocation opens a new connection, which resets the mode bits).
-  For separate labels on one strip, use `--label`; it supersedes `--chain`.
+  so consecutive chained jobs butt together and need scissors. It refuses unless `--no-cut-ok` is
+  also passed. Every job in a chain except the last must pass `--chain` (each invocation opens a
+  new connection, which resets the mode bits). For separate labels on one strip, use `--label` or
+  `--image` several times: one job, half-cuts between. An uncut seam is remembered
+  (`~/.cache/ptouch-label/chain-open-<model>.txt`) and the next job's `Cuts:` line says it JOINS
+  the previous job.
+- **Every job prints a `Cuts:` line** stating the physical result (half-cut between N labels;
+  full cut, NO cut or none at the end). It is the only thing to report about cuts.
 
 Raster mode bits, for the curious (ESC i K, reference page 33): bit 2 half cut, bit 3 *no*
 chain (so `--chain` clears it), bit 4 special tape no-cut, bit 6 high resolution. Mirror is a
 separate command (ESC i M, bit 7).
+
+## What to print for each kind of object
+
+The object decides the tape (`--for`), the line count and the length. Defaults below; the
+owner's own labeling convention, if there is one, wins.
+
+| Object | Labels | Tape | Notes |
+|---|---|---|---|
+| **New machine** (mini PC, desktop, NAS) | 1. name (one line); 2. facts (3 lines: name + role, model + CPU + RAM + disk, address + access); 3. power brick (`<name> power brick`, one line) | `--for mini-pc`: name ≤ 12 mm, facts ≤ 18 mm; `--for tower`/`nas`: ≤ 18 / 24 mm; brick: `--for power-brick`, 9–12 mm | Measure the clear face and pass `--fit`. A one-word name on wide tape is the classic mistake. |
+| **Internal SSD or boot disk** (M.2, 2.5") | one line: `<host> boot disk · <OS>` | 9 mm (an M.2 2280 is 22 mm wide); `--for peripheral` as the cap | Beside the maker's sticker, never over the serial or the part number. The disk carries the host's identity across board swaps, so it gets the host's name. |
+| **Retired or parts unit** | one 3-line label: `ex-<name> · <model> · PARTS ONLY` / the fault / what still works + retired date | the unit's form factor | Remove or strike the old name label so nobody plugs it in as the live machine. |
+| **RAM module** | none | | The module's own sticker (part, size, voltage, serial) is the record; slots are tight and some stickers void the warranty if removed. Record the module from the host (`dmidecode`) in the inventory. Pending the owner's confirmation (PTOUCH decisions card 5). |
+| **External drive, cable, power adapter** | see `drive-labeling`, `cable-labeling`, and the owner's convention | | |
 
 ## Printing from any macOS print dialog (optional)
 
