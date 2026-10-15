@@ -1,0 +1,10 @@
+{
+  "name": "ptouch-labels",
+  "version": "1.0.0",
+  "description": "Print tape labels on Brother P-touch network label printers (PT-P750W, PT-P950NW) from Claude through the ptouch-label CLI: tape-width probing before every job, hi-res raster printing, half-cut multi-label strips, waste rules, calibration and troubleshooting.",
+  "author": { "name": "John Randall", "url": "https://github.com/johntrandall" },
+  "homepage": "https://github.com/johntrandall/claude-plugin-ptouch-labels",
+  "repository": "https://github.com/johntrandall/claude-plugin-ptouch-labels",
+  "license": "MIT",
+  "keywords": ["labels", "brother", "p-touch", "ptouch", "printing", "tze"]
+}
