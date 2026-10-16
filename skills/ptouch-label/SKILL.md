@@ -184,14 +184,15 @@ separate command (ESC i M, bit 7).
 ## What to print for each kind of object
 
 The object decides the tape (`--for`), the line count and the length. Defaults below; the
-owner's own labeling convention, if there is one, wins.
+owner's own labeling convention and intake procedure, if there are any, win. Order for new gear:
+photograph the stickers, record in the inventory, then print.
 
 | Object | Labels | Tape | Notes |
 |---|---|---|---|
 | **New machine** (mini PC, desktop, NAS) | 1. name (one line); 2. facts (3 lines: name + role, model + CPU + RAM + disk, address + access); 3. power brick (`<name> power brick`, one line) | `--for mini-pc`: name ≤ 12 mm, facts ≤ 18 mm; `--for tower`/`nas`: ≤ 18 / 24 mm; brick: `--for power-brick`, 9–12 mm | Measure the clear face and pass `--fit`. A one-word name on wide tape is the classic mistake. |
 | **Internal SSD or boot disk** (M.2, 2.5") | one line: `<host> boot disk · <OS>` | 9 mm (an M.2 2280 is 22 mm wide); `--for peripheral` as the cap | Beside the maker's sticker, never over the serial or the part number. The disk carries the host's identity across board swaps, so it gets the host's name. |
 | **Retired or parts unit** | one 3-line label: `ex-<name> · <model> · PARTS ONLY` / the fault / what still works + retired date | the unit's form factor | Remove or strike the old name label so nobody plugs it in as the live machine. |
-| **RAM module** | none | | The module's own sticker (part, size, voltage, serial) is the record; slots are tight and some stickers void the warranty if removed. Record the module from the host (`dmidecode`) in the inventory. Pending the owner's confirmation (PTOUCH decisions card 5). |
+| **RAM module** | none | | The module's own sticker (part, size, voltage, serial) is the record; slots are tight and some stickers void the warranty if removed. Photograph it and record the module from the host (`dmidecode` / `system_profiler`) in the inventory. |
 | **External drive, cable, power adapter** | see `drive-labeling`, `cable-labeling`, and the owner's convention | | |
 
 ## Printing from any macOS print dialog (optional)
