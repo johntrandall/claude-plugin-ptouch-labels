@@ -33,7 +33,13 @@ CUPS. Rendering is identical across models; only the print-head dimensions diffe
    and refuses unless you add `--no-cut-ok`.
 3. **Say only what the `Cuts:` line says.** Every job prints one (`Cuts: half-cut between the 3
    labels, full cut at the end`). Quote it to the user. Never describe a cut you did not see there.
-4. **Probe, size, preview, print.** The probe says what tape is loaded, not what the object needs.
+4. **One send per job, and never resend after an error.** The CLI waits while the printer's
+   status page says PRINTING (up to 10 minutes, then exits 3), and it never retries a write. A
+   send that fails part-way exits 4 with "SEND FAILED PART-WAY ... DO NOT RESEND": the printer
+   may already hold the whole job and print it later. Do not run the job again. Wait until the
+   printer is idle, ask the user what actually came out, and print only what is missing. (On
+   2026-11-22 a timed-out send to a busy Iris printed a 19-label strip four times.)
+5. **Probe, size, preview, print.** The probe says what tape is loaded, not what the object needs.
    If the loaded tape is wider than the form factor allows, ask for a narrower cassette.
 
 ## Install and configure (once per Mac)
@@ -295,6 +301,13 @@ python3 -c "from PIL import Image; im=Image.open('/tmp/ptouch-preview.png').conv
 Symmetric within a pixel or two means the maths is right. The CLI subtracts the first line's
 `textbbox` top offset when centring (Pillow's default anchor puts the ascender line at `y`, and
 bold Helvetica Neue reports a 9 px offset at size 34); do not "simplify" that away.
+
+**"timed out" or "SEND FAILED PART-WAY" while printing.** Treat it as possibly printed. A
+timeout on the raster port does not mean nothing arrived: the printer buffers what it receives
+and prints it when it finishes the current strip. Never resend on your own; wait for READY on
+`http://<printer>/general/status.html`, ask the user what came out, then send only the missing
+labels. Before 2026-11-22 the library retried the write three times, and each retry printed
+the whole job again.
 
 **Raster connect or timeout errors.** Run `--probe` first (port 9100 does not wake the radio the
 way IPP does); check `nc -z -G 2 <host> 9100`; if the printer changed address, `--probe` refreshes
